@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webcam OCR</title>
+    <!-- Tambahkan Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh; /* Menggunakan tinggi 100% dari viewport height */
+      }
+
+      .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+      }
+
+      .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 class="mb-4">Webcam OCR</h2>
+      <video id="video" class="mb-3" width="640" height="480" autoplay></video>
+      <button class="btn btn-primary btn-lg" onclick="captureAndOCR()">
+        Ambil Gambar dan Lakukan OCR
+      </button>
+    </div>
+
+    <!-- Modal untuk menampilkan hasil OCR dan gambar yang diambil -->
+    <div
+      class="modal fade"
+      id="hasilOCRModal"
+      tabindex="-1"
+      aria-labelledby="exampleModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Hasil OCR</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <img
+              id="capturedImage"
+              class="img-fluid mb-3"
+              alt="Captured Image"
+            />
+            <div id="hasilOCR"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tambahkan Bootstrap JS dan Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Ambil gambar dari kamera dan kirim ke server Flask
+      function captureAndOCR() {
+        var video = document.getElementById("video");
+        var canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        var context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Tampilkan gambar yang diambil dalam modal
+        var capturedImage = document.getElementById("capturedImage");
+        capturedImage.src = canvas.toDataURL("image/png");
+
+        var dataURL = canvas.toDataURL("image/png");
+
+        // Tambahkan padding jika diperlukan
+        var paddingLength = (4 - (dataURL.length % 4)) % 4;
+        for (var i = 0; i < paddingLength; i++) {
+          dataURL += "=";
+        }
+
+        // Kirim data gambar ke server Flask
+        fetch("/capture", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: "imageData=" + encodeURIComponent(dataURL),
+        })
+          .then((response) => response.json())
+          .then((result) => {
+            // Tampilkan hasil OCR dalam modal
+            document.getElementById("hasilOCR").innerHTML =
+              "<strong>" + result.result + "</strong>";
+            var hasilOCRModal = new bootstrap.Modal(
+              document.getElementById("hasilOCRModal")
+            );
+            hasilOCRModal.show();
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      // Mengakses kamera menggunakan HTML5
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then(function (stream) {
+          var video = document.getElementById("video");
+          video.srcObject = stream;
+        })
+        .catch(function (error) {
+          console.error("Error accessing webcam:", error);
+        });
+    </script>
+  </body>
+</html>
